@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LuaVault – Secure Lua Runner</title>
+
+  <!-- Fengari (Lua 5.3 in the browser) -->
+  <script src="https://cdn.jsdelivr.net/npm/fengari-web@0.1.4/dist/fengari-web.js"></script>
+  <!-- Prism for syntax highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-lua.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --danger: #da3633;
+      --warning: #d29922;
+      --blue: #1f6feb;
+      --radius: 8px;
+      --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 1.25rem;
+    }
+
+    .logo-icon {
+      font-size: 1.4rem;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .btn:hover {
+      background: #30363d;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #388bfd;
+      border-color: #388bfd;
+    }
+
+    .btn-ghost {
+      background: transparent;
+    }
+
+    .btn-small {
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-small:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      flex: 1;
+      min-height: 0;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      min-height: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .status {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .status.running { color: var(--warning); }
+    .status.success { color: var(--accent); }
+    .status.error { color: var(--danger); }
+
+    .editor-wrapper {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    #code {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      padding: 16px;
+      background: transparent;
+      color: transparent;
+      caret-color: var(--text);
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre;
+      overflow: auto;
+      z-index: 2;
+    }
+
+    #highlight {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      padding: 16px;
+      pointer-events: none;
+      overflow: auto;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.5;
+      background: var(--bg);
+      z-index: 1;
+    }
+
+    #highlight code {
+      font-family: inherit;
+      font-size: inherit;
+      line-height: inherit;
+      background: transparent !important;
+      padding: 0 !important;
+      white-space: pre;
+    }
+
+    .output {
+      flex: 1;
+      margin: 0;
+      padding: 16px;
+      overflow: auto;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .output .error { color: #f85149; }
+    .output .info { color: var(--text-muted); }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal.hidden { display: none; }
+
+    .modal-content {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 800px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .btn-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .btn-close:hover { color: var(--text); }
+
+    .warning {
+      padding: 12px 20px;
+      background: rgba(210, 153, 34, 0.1);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+      color: var(--warning);
+      line-height: 1.4;
+    }
+
+    .protected-code {
+      flex: 1;
+      margin: 0;
+      padding: 20px;
+      overflow: auto;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.5;
+      background: var(--bg);
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-all;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      justify-content: flex-end;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 20px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 900px) {
+      .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+      }
+      .header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">🔒</span>
+        <span class="logo-text">LuaVault</span>
+      </div>
+      <div class="header-actions">
+        <button id="btn-run" class="btn btn-primary" title="Run Lua code">▶ Run</button>
+        <button id="btn-protect" class="btn btn-secondary" title="Obfuscate & protect">🛡️ Protect</button>
+        <button id="btn-clear" class="btn btn-ghost" title="Clear editor">Clear</button>
+        <button id="btn-download" class="btn btn-ghost" title="Download .lua file">⬇ Download</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="panel editor-panel">
+        <div class="panel-header">
+          <span>Lua Editor</span>
+          <span id="status" class="status">Ready</span>
+        </div>
+        <div class="editor-wrapper">
+          <textarea id="code" spellcheck="false" placeholder="-- Write your Lua code here
+print('Hello from LuaVault!')
+
+function greet(name)
+  return 'Hello, ' .. name
+end
+
+print(greet('World'))"></textarea>
+          <pre id="highlight" class="language-lua" aria-hidden="true"><code></code></pre>
+        </div>
+      </section>
+
+      <section class="panel output-panel">
+        <div class="panel-header">
+          <span>Output / Console</span>
+          <button id="btn-clear-output" class="btn-small">Clear</button>
+        </div>
+        <pre id="output" class="output"></pre>
+      </section>
+    </main>
+
+    <div id="protected-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>🛡️ Protected Lua</h2>
+          <button id="btn-close-modal" class="btn-close">×</button>
+        </div>
+        <p class="warning">
+          Code has been obfuscated. Right-click, text selection and copy are disabled on this view.
+          <br><strong>Note:</strong> Client-side protection is never 100% secure. For real protection use a private backend.
+        </p>
+        <pre id="protected-code" class="protected-code"></pre>
+        <div class="modal-actions">
+          <button id="btn-copy-protected" class="btn btn-secondary">Copy Obfuscated</button>
+          <button id="btn-download-protected" class="btn btn-primary">Download Protected</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span>LuaVault • Browser-based Lua runner with basic protection</span>
+      <span>Powered by Fengari • Not a full GitHub replacement</span>
+    </footer>
+  </div>
+
+  <script>
+    // LuaVault - Browser-based Lua runner + basic protection
+
+    const codeEl = document.getElementById("code");
+    const highlightEl = document.getElementById("highlight").querySelector("code");
+    const outputEl = document.getElementById("output");
+    const statusEl = document.getElementById("status");
+    const protectedModal = document.getElementById("protected-modal");
+    const protectedCodeEl = document.getElementById("protected-code");
+
+    // ========== Syntax Highlighting ==========
+    function updateHighlight() {
+      const code = codeEl.value;
+      highlightEl.textContent = code;
+      Prism.highlightElement(highlightEl);
+
+      const pre = document.getElementById("highlight");
+      pre.scrollTop = codeEl.scrollTop;
+      pre.scrollLeft = codeEl.scrollLeft;
+    }
+
+    codeEl.addEventListener("input", updateHighlight);
+    codeEl.addEventListener("scroll", () => {
+      const pre = document.getElementById("highlight");
+      pre.scrollTop = codeEl.scrollTop;
+      pre.scrollLeft = codeEl.scrollLeft;
+    });
+
+    updateHighlight();
+
+    // ========== Output helpers ==========
+    function clearOutput() {
+      outputEl.innerHTML = "";
+    }
+
+    function appendOutput(text, className = "") {
+      const span = document.createElement("span");
+      if (className) span.className = className;
+      span.textContent = text + "\n";
+      outputEl.appendChild(span);
+      outputEl.scrollTop = outputEl.scrollHeight;
+    }
+
+    function setStatus(text, type = "") {
+      statusEl.textContent = text;
+      statusEl.className = "status " + type;
+    }
+
+    // ========== Run Lua with Fengari ==========
+    document.getElementById("btn-run").addEventListener("click", () => {
+      const source = codeEl.value.trim();
+      if (!source) {
+        appendOutput("No code to run.", "info");
+        return;
+      }
+
+      clearOutput();
+      setStatus("Running…", "running");
+
+      try {
+        const L = fengari.lauxlib.luaL_newstate();
+        fengari.lualib.luaL_openlibs(L);
+
+        const printBuffer = [];
+
+        fengari.lua.lua_pushjsfunction(L, function (L) {
+          const str = fengari.lua.lua_tojsstring(L, 1);
+          printBuffer.push(str);
+          return 0;
+        });
+        fengari.lua.lua_setglobal(L, fengari.to_luastring("__js_print"));
+
+        if (fengari.lauxlib.luaL_dostring(L, fengari.to_luastring(`
+          function print(...)
+            local n = select("#", ...)
+            local t = {}
+            for i = 1, n do
+              t[i] = tostring(select(i, ...))
+            end
+            __js_print(table.concat(t, "\\t"))
+          end
+        `)) !== fengari.lua.LUA_OK) {
+          const err = fengari.lua.lua_tojsstring(L, -1);
+          throw new Error("Failed to set up print: " + err);
+        }
+
+        const result = fengari.lauxlib.luaL_dostring(L, fengari.to_luastring(source));
+
+        if (result !== fengari.lua.LUA_OK) {
+          const errMsg = fengari.lua.lua_tojsstring(L, -1);
+          appendOutput("Error: " + errMsg, "error");
+          setStatus("Error", "error");
+        } else {
+          if (printBuffer.length === 0) {
+            appendOutput("(no output)", "info");
+          } else {
+            printBuffer.forEach(line => appendOutput(line));
+          }
+          setStatus("Success", "success");
+        }
+
+        fengari.lua.lua_close(L);
+      } catch (err) {
+        appendOutput("Runtime error: " + err.message, "error");
+        setStatus("Error", "error");
+        console.error(err);
+      }
+    });
+
+    // ========== Basic Lua Obfuscator ==========
+    function obfuscateLua(source) {
+      let code = source;
+
+      code = code.replace(/--\[\[[\s\S]*?\]\]/g, "");
+      code = code.replace(/--.*$/gm, "");
+      code = code.replace(/\n\s*\n/g, "\n");
+      code = code.trim();
+
+      const locals = new Map();
+      let counter = 0;
+
+      code = code.replace(/\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)/g, (match, name) => {
+        if (!locals.has(name) && !["print", "pairs", "ipairs", "type", "tostring", "tonumber"].includes(name)) {
+          const newName = "_0x" + (counter++).toString(16);
+          locals.set(name, newName);
+          return "local " + newName;
+        }
+        return match;
+      });
+
+      locals.forEach((newName, oldName) => {
+        const regex = new RegExp("\\b" + oldName + "\\b", "g");
+        code = code.replace(regex, newName);
+      });
+
+      const watermark = `-- Protected by LuaVault • ${new Date().toISOString()}\n-- Do not redistribute without permission\n\n`;
+      return watermark + code;
+    }
+
+    // ========== Protect button ==========
+    document.getElementById("btn-protect").addEventListener("click", () => {
+      const source = codeEl.value.trim();
+      if (!source) {
+        alert("No code to protect.");
+        return;
+      }
+
+      const obfuscated = obfuscateLua(source);
+      protectedCodeEl.textContent = obfuscated;
+      protectedModal.classList.remove("hidden");
+
+      protectedCodeEl.oncontextmenu = (e) => e.preventDefault();
+      protectedCodeEl.onselectstart = (e) => e.preventDefault();
+      protectedCodeEl.oncopy = (e) => e.preventDefault();
+    });
+
+    document.getElementById("btn-close-modal").addEventListener("click", () => {
+      protectedModal.classList.add("hidden");
+    });
+
+    document.getElementById("btn-copy-protected").addEventListener("click", () => {
+      const text = protectedCodeEl.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Obfuscated code copied to clipboard.");
+      });
+    });
+
+    document.getElementById("btn-download-protected").addEventListener("click", () => {
+      downloadFile(protectedCodeEl.textContent, "protected.lua");
+    });
+
+    document.getElementById("btn-clear").addEventListener("click", () => {
+      codeEl.value = "";
+      updateHighlight();
+      clearOutput();
+      setStatus("Ready");
+    });
+
+    document.getElementById("btn-clear-output").addEventListener("click", clearOutput);
+
+    document.getElementById("btn-download").addEventListener("click", () => {
+      const source = codeEl.value;
+      if (!source.trim()) {
+        alert("Nothing to download.");
+        return;
+      }
+      downloadFile(source, "script.lua");
+    });
+
+    function downloadFile(content, filename) {
+      const blob = new Blob([content], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    codeEl.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && e.key === "Enter") {
+        e.preventDefault();
+        document.getElementById("btn-run").click();
+      }
+    });
+
+    console.log("LuaVault ready. Press Ctrl+Enter to run.");
+  </script>
+</body>
+</html>

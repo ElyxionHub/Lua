@@ -1,0 +1,68 @@
+local Players = game:GetService("Players")
+local msg = "Hindi po ako nawala andito lang po ako Bading si A Si dwayne B Si ano C Si ano nga D si mang anno"
+
+local function showMessage(player)
+    local PlayerGui = player:WaitForChild("PlayerGui", 15)
+    if not PlayerGui then return end
+
+    -- Tanggalin kung may lumang GUI
+    if PlayerGui:FindFirstChild("LavaMessageGui") then
+        PlayerGui.LavaMessageGui:Destroy()
+    end
+
+    -- Gumawa ng GUI
+    local Gui = Instance.new("ScreenGui")
+    Gui.Name = "LavaMessageGui"
+    Gui.ResetOnSpawn = false
+    Gui.DisplayOrder = 100 -- Pinaka-una sa lahat
+    Gui.Parent = PlayerGui
+
+    -- BUONG SCREEN BACKGROUND
+    local Bg = Instance.new("Frame")
+    Bg.Size = UDim2.new(1, 0, 1, 0) -- SAKOP ANG BUONG SCREEN
+    Bg.Position = UDim2.new(0, 0, 0, 0)
+    Bg.BackgroundColor3 = Color3.fromRGB(20, 0, 40) -- Madilim na lila
+    Bg.BackgroundTransparency = 0
+    Bg.Parent = Gui
+
+    -- KUMIKITKIT NA GUHIT SA PALIGID
+    local Border = Instance.new("Frame")
+    Border.Size = UDim2.new(0.92, 0, 0.85, 0)
+    Border.Position = UDim2.new(0.04, 0, 0.075, 0)
+    Border.BackgroundColor3 = Color3.fromRGB(255, 215, 0) -- GINTONG KULAY
+    Border.BackgroundTransparency = 0
+    Border.Parent = Gui
+
+    -- PANG-ILALIM NA LILIM
+    local Inner = Instance.new("Frame")
+    Inner.Size = UDim2.new(0.9, 0, 0.83, 0)
+    Inner.Position = UDim2.new(0.05, 0, 0.085, 0)
+    Inner.BackgroundColor3 = Color3.fromRGB(30, 10, 60)
+    Inner.Parent = Border
+
+    -- MALAKING TEKSTO
+    local Text = Instance.new("TextLabel")
+    Text.Size = UDim2.new(0.85, 0, 0.4, 0)
+    Text.Position = UDim2.new(0.075, 0, 0.3, 0)
+    Text.BackgroundTransparency = 1
+    Text.Text = msg
+    Text.TextColor3 = Color3.fromRGB(255, 255, 0) -- DILAW NA MASIWAS
+    Text.Font = Enum.Font.GothamBold
+    Text.TextScaled = true
+    Text.TextStrokeTransparency = 0 -- MAY GUHIT SA PALIGID NG LETRA
+    Text.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    Text.Parent = Inner
+
+    -- MANATILING NAKITA NG 8 SEGUNDO
+    task.wait(8)
+    if Gui then Gui:Destroy() end
+end
+
+-- Ipakita sa lahat ng nasa laro
+for _, player in ipairs(Players:GetPlayers()) do
+    task.spawn(showMessage, player)
+end
+
+-- Ipakita sa papasok na bago
+Players.PlayerAdded:Connect(showMessage)
+
